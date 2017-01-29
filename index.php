@@ -12,7 +12,7 @@ $program = new WriteLine(
     new ReadLine(function ($name) {
         return new WriteLine(
             "Hello, $name!",
-            new End
+            new EndWith($name)
         );
     })
 );
@@ -38,13 +38,12 @@ function interpret($program)
                 trim(fgets(STDIN))
             ));
 
-        case End::class:
-        default:
-            return;
+        case EndWith::class:
+            return $program->value;
     }
 }
 
 // Finally, we can run the program by putting these two
-// sides together!
+// sides together. We can even return a value from it!
 
-interpret($program);
+printf("---\nNAME SAVED AS '%s'!\n", interpret($program));

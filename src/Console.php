@@ -30,7 +30,14 @@ class ReadLine extends ConsoleIO
     }
 }
 
-// End a console program. This just signifies the end of a
-// console program, and exits interpretation.
+// End a console program, and output a value. This means we
+// can produce programs that result in values, which means
+// we can reuse sub-programs!
 
-class End extends ConsoleIO {}
+class EndWith extends ConsoleIO
+{
+    public function __construct($value)
+    {
+        $this->value = $value;
+    }
+}
