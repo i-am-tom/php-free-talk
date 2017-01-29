@@ -1,44 +1,36 @@
 <?php
 
-// The root class for console IO. This doesn't yet do anything
-// as there's nothing particularly interesting about the type.
+// The root class for console IO. This now has a way to
+// describe basic sequential computation.
 
 abstract class ConsoleIO
 {
+    public function chain(callable $f)
+    {
+        return new Chain($this, $f);
+    }
+
     public function map(callable $f)
     {
         return new Map($this, $f);
     }
 }
 
-// Write a line to the console. All this stores is the line to
-// write to the console, along with the next IO instruction to
-// execute.
+// Write a line to the console.
 
 class WriteLine extends ConsoleIO
 {
-    public function __construct($line, $then)
+    public function __construct($line)
     {
         $this->line = $line;
-        $this->then = $then;
     }
 }
 
-// Read a line from the console. This constructor takes a
-// function that, given the line of console input, will
-// produce the next IO instruction to execute.
+// Read a line from the console.
 
-class ReadLine extends ConsoleIO
-{
-    public function __construct(callable $process)
-    {
-        $this->process = $process;
-    }
-}
+class ReadLine extends ConsoleIO {}
 
-// End a console program, and output a value. This means we
-// can produce programs that result in values, which means
-// we can reuse sub-programs!
+// Lift a value into the computation.
 
 class Pure extends ConsoleIO
 {
@@ -47,6 +39,19 @@ class Pure extends ConsoleIO
         $this->value = $value;
     }
 }
+
+// Create a sequence of computations by transforming the
+// input computation to produce an output computation.
+
+class Chain extends ConsoleIO
+{
+    public function __construct(ConsoleIO $that, callable $f)
+    {
+        $this->that = $that;
+        $this->f = $f;
+    }
+}
+
 
 // Transform the value of a program in some way. Add some
 // block of processing logic to the computation.

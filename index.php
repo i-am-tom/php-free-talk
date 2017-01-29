@@ -2,20 +2,21 @@
 
 include 'src/Console.php';
 
-// A simple sample program. Uses all the classes in src/,
-// and terminates the program. Notice that we could make
-// while() loops based on ReadLine by creating potential
-// cycles in the WriteLine's $then.
+// A program using the new machinery. Note that we could
+// still create loops using the ->chain method to repeat
+// parts of the computation.
 
-$program = new WriteLine(
-    'Hello! What\'s your name?',
-    new ReadLine(function ($name) {
-        return new WriteLine(
-            "Hello, $name!",
-            new Pure($name)
-        );
-    })
-);
+$program =
+    (new WriteLine('Hello! What\'s your name?'))
+        ->chain(function ($_) {
+            return (new ReadLine)
+                ->chain(function ($name) {
+                    return (new WriteLine("Hello, $name!"))
+                        ->chain(function ($_) use ($name) {
+                            return new Pure($name);
+                        });
+                });
+        });
 
 // An interpreter for the program. Note that this is 100%
 // separated from the $program above; the whole program
@@ -29,22 +30,29 @@ function interpret($program)
     switch (get_class($program)) {
         case WriteLine::class:
             echo $program->line, PHP_EOL;
-            return interpret($program->then);
+            return;
 
         case ReadLine::class:
-            $process = $program->process;
-
-            return interpret($process(
-                trim(fgets(STDIN))
-            ));
+            return trim(fgets(STDIN));
 
         case Pure::class:
             return $program->value;
 
+        case Chain::class:
+            $f = $program->f;
+
+            return interpret(
+                $f(interpret(
+                    $program->that
+                ))
+            );
+
         case Map::class:
             $f = $program->f;
 
-            return $f(interpret($program->that));
+            return $f(interpret(
+                $program->that
+            ));
     }
 }
 
