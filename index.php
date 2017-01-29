@@ -1,6 +1,6 @@
 <?php
 
-include './src/Console.php';
+include 'src/Console.php';
 
 // A simple sample program. Uses all the classes in src/,
 // and terminates the program. Notice that we could make
@@ -12,7 +12,7 @@ $program = new WriteLine(
     new ReadLine(function ($name) {
         return new WriteLine(
             "Hello, $name!",
-            new EndWith($name)
+            new Pure($name)
         );
     })
 );
@@ -38,12 +38,24 @@ function interpret($program)
                 trim(fgets(STDIN))
             ));
 
-        case EndWith::class:
+        case Pure::class:
             return $program->value;
+
+        case Map::class:
+            $f = $program->f;
+
+            return $f(interpret($program->that));
     }
 }
 
 // Finally, we can run the program by putting these two
 // sides together. We can even return a value from it!
 
-printf("---\nNAME SAVED AS '%s'!\n", interpret($program));
+printf(
+    "---\nNAME SAVED AS '%s'!\n",
+    interpret(
+        $program->map(
+            'strtoupper'
+        )
+    )
+);

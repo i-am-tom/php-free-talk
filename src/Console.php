@@ -3,7 +3,13 @@
 // The root class for console IO. This doesn't yet do anything
 // as there's nothing particularly interesting about the type.
 
-abstract class ConsoleIO {}
+abstract class ConsoleIO
+{
+    public function map(callable $f)
+    {
+        return new Map($this, $f);
+    }
+}
 
 // Write a line to the console. All this stores is the line to
 // write to the console, along with the next IO instruction to
@@ -34,10 +40,22 @@ class ReadLine extends ConsoleIO
 // can produce programs that result in values, which means
 // we can reuse sub-programs!
 
-class EndWith extends ConsoleIO
+class Pure extends ConsoleIO
 {
     public function __construct($value)
     {
         $this->value = $value;
+    }
+}
+
+// Transform the value of a program in some way. Add some
+// block of processing logic to the computation.
+
+class Map extends ConsoleIO
+{
+    public function __construct(ConsoleIO $that, callable $f)
+    {
+        $this->that = $that;
+        $this->f = $f;
     }
 }
