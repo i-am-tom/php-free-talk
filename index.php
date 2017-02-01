@@ -68,6 +68,26 @@ $production = function (ConsoleF $functor) use (&$production) {
     }
 };
 
+/**
+ * Or, as an alternative, we could define a totally different interpreter to do,
+ * say, testing. It requires no change to the actual code, and the actual code's
+ * behaviour can be 100% unit-tested because we're not changing any of it with
+ * mocks. We have completely decoupled execution from program description!
+ *
+ * @var callable
+ */
+$development = function (ConsoleF $functor) use (&$development) {
+    switch (get_class($functor)) {
+        case WriteLine::class:
+            echo 'STDOUT: ', $functor->line, PHP_EOL;
+            return $functor->next->interpret($development);
+
+        case ReadLine::class:
+            echo 'READING FROM STDIN. USING "Ronald" AS INPUT.', PHP_EOL;
+            return ($functor->process)('Ronald')->interpret($development);
+    }
+};
+
 // As with before, we can return values from our programs and compose them
 // together to make bigger programs!
 
@@ -75,5 +95,6 @@ printf(
     "---\nNAME SAVED AS '%s'!\n",
     $program
         ->map('strtoupper')
+        // ->interpret($development)
         ->interpret($production)
 );
