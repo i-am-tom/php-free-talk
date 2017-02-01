@@ -57,8 +57,15 @@ abstract class Free
      */
     public static function pure($x) : Free { return new Pure($x); }
 
-    // // Free f a ~> (f a -> g a) -> g a
-    // abstract public function interpret(callable $f);
+    /**
+     * Interpret a Free value given some functor interpreter. All the machinery
+     * of the Free can be automated, but we will need a specific interpreter to
+     * be supplied for the given DSL.
+     *
+     * @param callable $f Free f a -> g a
+     * @return mixed g a
+     */
+    abstract public function interpret(callable $f);
 }
 
 /**
@@ -86,6 +93,16 @@ class Pure extends Free
      * @return Free A new Free-built program.
      */
     public function chain(callable $f) : Free { return $f($this->value); }
+
+    /**
+     * Interpreting will remove the value from the Pure context. It would be a
+     * useful further exercise to look into comonads - specifically, cofree
+     * comonads - and their relationship with the free monad.
+     *
+     * @param callable $interpreter Free f a -> g a
+     * @return mixed g a
+     */
+    public function interpret(callable $interpreter) { return $this->value; }
 }
 
 /**
@@ -123,5 +140,20 @@ class Roll extends Free
                 return $x->chain($f);
             }
         ));
+    }
+
+    /**
+     * Interpret an instruction given the supplied DSL interpreter. This means
+     * that the only code required by the user at interpretation level is the
+     * translation from our DSL to our effectful computation. Usually, this is
+     * a natural transformation from Free f a to IO a, but PHP isn't so friendly
+     * in this regard.
+     *
+     * @param callable $interpreter Free f a -> g a
+     * @return mixed g a
+     */
+    public function interpret(callable $interpreter)
+    {
+        return $interpreter($this->functor);
     }
 }

@@ -46,37 +46,34 @@ $program = write('Hello! What\'s your name?')->chain(function ($_) {
 });
 
 /**
- * Fully-interpreted program. We can actually automate most of this machinery,
- * as we'll see in the next commit. The point is that this function defines ALL
- * "impure" behaviour in our entire application, and we can swap it out as and
- * how we like.
+ * By moving all our Free interpretation machinery to the Free classes, our
+ * final interpreter is very straightforward: all it does is explain how the
+ * instructions are executed, and how they feed into the next one. That's it!
  *
- * @param Free $program The program to interpret - Free ConsoleF a
- * @return mixed The result of interpreting - a
+ * @var callable
  */
-function interpret(Free $program) {
-    switch (get_class($program)) {
-        case Pure::class:
-            return $program->value;
+$production = function (ConsoleF $functor) use (&$production) {
+    switch (get_class($functor)) {
+        case WriteLine::class:
+            echo $functor->line, PHP_EOL;
 
-        case Roll::class:
-            switch (get_class($program->functor)) {
-                case WriteLine::class:
-                    echo $program->functor->line, PHP_EOL;
-                    return interpret($program->functor->next);
+            return $functor->next
+                ->interpret($production);
 
-                case ReadLine::class:
-                    return interpret(
-                        ($program->functor->process)
-                            (trim(fgets(STDIN))));
-            }
+        case ReadLine::class:
+            $input = trim(fgets(STDIN));
+
+            return ($functor->process)($input)
+                ->interpret($production);
     }
-}
+};
 
 // As with before, we can return values from our programs and compose them
 // together to make bigger programs!
 
 printf(
     "---\nNAME SAVED AS '%s'!\n",
-    interpret($program->map('strtoupper'))
+    $program
+        ->map('strtoupper')
+        ->interpret($production)
 );
