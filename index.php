@@ -1,69 +1,82 @@
 <?php
 
 include 'src/Console.php';
+include 'src/Free.php';
 
-// A program using the new machinery. Note that we could
-// still create loops using the ->chain method to repeat
-// parts of the computation.
+/**
+ * Define an effectful read. In other words, lift our ConsoleF constructor into
+ * our shiny new programming language.
+ *
+ * @return Free More specifically, Free ConsoleF String
+ */
+function read() { return new Roll(new ReadLine('Free::pure')); }
 
-$program =
-    (new WriteLine('Hello! What\'s your name?'))
-        ->chain(function ($_) {
-            return (new ReadLine)
-                ->chain(function ($name) {
-                    return (new WriteLine("Hello, $name!"))
-                        ->chain(function ($_) use ($name) {
-                            return new Pure($name);
-                        });
-                });
+/**
+ * Define an effectful write. This declares an instruction for console writes,
+ * that, of course, can be interpreted in any way we like later on.
+ *
+ * @param String $x The string to write to the console.
+ * @return Free More specifically, Free ConsoleF Unit
+ */
+function write($x) { return new Roll(new WriteLine($x, Free::pure(null))); }
+
+/**
+ * Here's a sample program. Obviously, not as pretty as it could be, but it's
+ * VERY strictly lawful. For wide-scale PHP use, you'd probably want to make use
+ * of __call() and friends to make it look a little less clunky.
+ *
+ * LOOK - THIS DOESN'T DO ANTYHING. HOW MAGICAL.
+ *
+ * @var Free More specifically, Free ConsoleF String
+ */
+$program = write('Hello! What\'s your name?')->chain(function ($_) {
+    return read()->chain(function ($name) {
+        return write("Hello, $name!")->chain(function ($_) use ($name) {
+            return new Pure($name);
         });
+    });
+});
 
-// An interpreter for the program. Note that this is 100%
-// separated from the $program above; the whole program
-// is generated without any knowledge of how to read or
-// write from the console. This means that, to test the
-// app, we can just supply a different interpreter, and
-// we're away!
+$program = write('Hello! What\'s your name?')->chain(function ($_) {
+    return read()->chain(function ($name) {
+        return write("Hello, $name!")->chain(function ($_) use ($name) {
+            return new Pure($name);
+        });
+    });
+});
 
-function interpret($program)
-{
+/**
+ * Fully-interpreted program. We can actually automate most of this machinery,
+ * as we'll see in the next commit. The point is that this function defines ALL
+ * "impure" behaviour in our entire application, and we can swap it out as and
+ * how we like.
+ *
+ * @param Free $program The program to interpret - Free ConsoleF a
+ * @return mixed The result of interpreting - a
+ */
+function interpret(Free $program) {
     switch (get_class($program)) {
-        case WriteLine::class:
-            echo $program->line, PHP_EOL;
-            return;
-
-        case ReadLine::class:
-            return trim(fgets(STDIN));
-
         case Pure::class:
             return $program->value;
 
-        case Chain::class:
-            $f = $program->f;
+        case Roll::class:
+            switch (get_class($program->functor)) {
+                case WriteLine::class:
+                    echo $program->functor->line, PHP_EOL;
+                    return interpret($program->functor->next);
 
-            return interpret(
-                $f(interpret(
-                    $program->that
-                ))
-            );
-
-        case Map::class:
-            $f = $program->f;
-
-            return $f(interpret(
-                $program->that
-            ));
+                case ReadLine::class:
+                    return interpret(
+                        ($program->functor->process)
+                            (trim(fgets(STDIN))));
+            }
     }
 }
 
-// Finally, we can run the program by putting these two
-// sides together. We can even return a value from it!
+// As with before, we can return values from our programs and compose them
+// together to make bigger programs!
 
 printf(
     "---\nNAME SAVED AS '%s'!\n",
-    interpret(
-        $program->map(
-            'strtoupper'
-        )
-    )
+    interpret($program->map('strtoupper'))
 );
