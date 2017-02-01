@@ -21,27 +21,38 @@ function read() { return new Roll(new ReadLine('Free::pure')); }
 function write($x) { return new Roll(new WriteLine($x, Free::pure(null))); }
 
 /**
- * Here's a sample program. Obviously, not as pretty as it could be, but it's
- * VERY strictly lawful. For wide-scale PHP use, you'd probably want to make use
- * of __call() and friends to make it look a little less clunky.
- *
- * LOOK - THIS DOESN'T DO ANTYHING. HOW MAGICAL.
+ * Here's a program to get your name. Nothing fancy. There's a strtoupper in
+ * there just to prove that the free monads can be mapped as functors.
  *
  * @var Free More specifically, Free ConsoleF String
  */
-$program = write('Hello! What\'s your name?')->chain(function ($_) {
-    return read()->chain(function ($name) {
-        return write("Hello, $name!")->chain(function ($_) use ($name) {
-            return new Pure($name);
-        });
-    });
+$name = write('Hello! What\'s your name?')->chain(function ($_) {
+    return read()->map('strtoupper');
 });
 
-$program = write('Hello! What\'s your name?')->chain(function ($_) {
-    return read()->chain(function ($name) {
-        return write("Hello, $name!")->chain(function ($_) use ($name) {
-            return new Pure($name);
-        });
+/**
+ * Here's a program to get your age. Note that intval means this program has a
+ * different type to the one above! We can compose programs of any type, and
+ * reuse them across applications.
+ *
+ * @var Free More specifically, Free ConsoleF Int
+ */
+$age = write('Hello! What\'s your age?')->chain(function ($_) {
+    return read()->map('intval');
+});
+
+/**
+ * This program composes the above two programs to form a new program! This is
+ * the true power of free monadic structures: beyond testability, we have these
+ * composable blocks that add no complexity to the interpretation stage at all:
+ * the interpreter for a given set of instructions never changes!
+ *
+ * @var Free More specifically, Free ConsoleF Unit
+ */
+$program = $name->chain(function ($name) use ($age) {
+    return $age->chain(function ($age) use ($name) {
+        $result = sprintf('Wow! %s is half way to %d!', $name, $age * 2);
+        return write($result); // Wow! Tom is half way to 30!
     });
 });
 
@@ -88,13 +99,8 @@ $development = function (ConsoleF $functor) use (&$development) {
     }
 };
 
-// As with before, we can return values from our programs and compose them
-// together to make bigger programs!
+// Finally, do the actual work!
 
-printf(
-    "---\nNAME SAVED AS '%s'!\n",
-    $program
-        ->map('strtoupper')
-        // ->interpret($development)
-        ->interpret($production)
-);
+$program
+    // ->interpret($development)
+    ->interpret($production);
